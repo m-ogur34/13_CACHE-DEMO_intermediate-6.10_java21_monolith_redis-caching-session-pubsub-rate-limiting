@@ -1,0 +1,68 @@
+# ==================== JAVA ====================
+# Derlenmiş Java sınıf dosyaları
+*.class
+# Java arşiv dosyaları
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ==================== MAVEN ====================
+# Maven derleme çıktı dizini
+target/
+# Maven yerel depo önbelleği (gerekirse)
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ==================== IDE - IntelliJ IDEA ====================
+# IntelliJ proje dosyaları
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ==================== IDE - Eclipse ====================
+# Eclipse proje dosyaları
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ==================== IDE - VS Code ====================
+# VS Code ayar klasörü
+.vscode/
+
+# ==================== SPRING BOOT ====================
+# Spring Boot geliştirici araçları yeniden başlatma dosyası
+.spring-beans
+
+# ==================== ORTAM DEĞİŞKENLERİ ====================
+# Gerçek ortam değişkenleri dosyası - asla commit'lenme!
+.env
+# Sadece örnek dosya commit'lenir
+!.env.example
+
+# ==================== LOG DOSYALARI ====================
+# Uygulama log dosyaları
+*.log
+logs/
+log/
+
+# ==================== DOCKER ====================
+# Docker yerel veri dizinleri (volume bağlantıları)
+pgdata/
+redis-data/
+
+# ==================== İŞLETİM SİSTEMİ ====================
+# macOS sistem dosyası
+.DS_Store
+# Windows küçük resim önbelleği
+Thumbs.db
+# Windows klasör yapılandırması
+Desktop.ini

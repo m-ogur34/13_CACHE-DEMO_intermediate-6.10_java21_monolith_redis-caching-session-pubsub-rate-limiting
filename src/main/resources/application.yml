@@ -1,0 +1,176 @@
+# ==================== UYGULAMA YAPILANDIRMASI ====================
+# Redis Cache Demo - Spring Boot 3.3.x & Java 21
+
+spring:
+  # Uygulama adı - servis keşfi ve log'larda görünür
+  application:
+    name: redis-cache-demo
+
+  # ==================== VERİTABANI ====================
+  datasource:
+    # PostgreSQL bağlantı URL'si - ortam değişkenlerinden okunur
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:redisdb}
+    # Veritabanı kullanıcı adı
+    username: ${DB_USERNAME:postgres}
+    # Veritabanı şifresi
+    password: ${DB_PASSWORD:postgres123}
+    # PostgreSQL JDBC sürücüsü
+    driver-class-name: org.postgresql.Driver
+    # HikariCP bağlantı havuzu ayarları
+    hikari:
+      # Havuzdaki maksimum bağlantı sayısı
+      maximum-pool-size: 10
+      # Boş bağlantı için minimum sayı
+      minimum-idle: 2
+      # Bağlantı zaman aşımı (ms)
+      connection-timeout: 30000
+      # Boşta bekleyen bağlantı süresi (ms) - 10 dakika
+      idle-timeout: 600000
+
+  # ==================== JPA / HIBERNATE ====================
+  jpa:
+    hibernate:
+      # update: şema değişikliklerini otomatik uygular, veriyi silmez
+      ddl-auto: update
+    # SQL sorgularını konsola yazdırma (geliştirme ortamı için)
+    show-sql: false
+    properties:
+      hibernate:
+        # PostgreSQL diyalekti
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # SQL sorgularını biçimli yazdır
+        format_sql: true
+        # Hibernate istatistiklerini topla
+        generate_statistics: false
+
+  # ==================== REDIS ====================
+  data:
+    redis:
+      # Redis sunucu adresi - ortam değişkeninden okunur
+      host: ${REDIS_HOST:localhost}
+      # Redis port numarası
+      port: ${REDIS_PORT:6379}
+      # Redis şifresi (boş ise şifresiz bağlanır)
+      password: ${REDIS_PASSWORD:}
+      # Bağlantı zaman aşımı
+      timeout: 2000ms
+      # Lettuce bağlantı havuzu ayarları
+      lettuce:
+        pool:
+          # Maksimum aktif bağlantı sayısı
+          max-active: 16
+          # Maksimum boş bağlantı sayısı
+          max-idle: 8
+          # Minimum boş bağlantı sayısı
+          min-idle: 2
+          # Bağlantı bekleme süresi (-1 = sonsuz)
+          max-wait: -1ms
+        # Lettuce bağlantı kapanma zaman aşımı
+        shutdown-timeout: 200ms
+
+  # ==================== CACHE ====================
+  cache:
+    # Cache türü: Redis kullanılıyor
+    type: redis
+    redis:
+      # Varsayılan TTL: 10 dakika (ms cinsinden)
+      time-to-live: 600000
+      # Null değerleri cache'leme (bellek tasarrufu)
+      cache-null-values: false
+      # Cache anahtarlarına prefix ekle
+      key-prefix: "redis-demo:"
+      # Prefix kullanımını etkinleştir
+      use-key-prefix: true
+
+  # ==================== VIRTUAL THREADS ====================
+  threads:
+    virtual:
+      # Java 21 Virtual Thread'leri etkinleştir - yüksek eşzamanlılık için
+      enabled: true
+
+  # ==================== JACKSON ====================
+  jackson:
+    # Java 8 tarih/saat tiplerini ISO-8601 formatında serialize et
+    serialization:
+      write-dates-as-timestamps: false
+    # Bilinmeyen JSON alanlarını yok say (esneklik için)
+    deserialization:
+      fail-on-unknown-properties: false
+    # Zaman dilimi
+    time-zone: UTC
+
+# ==================== SUNUCU ====================
+server:
+  # HTTP port - ortam değişkeninden okunur
+  port: ${SERVER_PORT:8080}
+  servlet:
+    # Tüm endpoint'ler için ortak prefix
+    context-path: /api
+
+# ==================== ACTUATOR (SAĞLIK DURUMU) ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Açık actuator endpoint'leri
+        include: health,info,metrics,caches,prometheus
+  endpoint:
+    health:
+      # Detaylı sağlık durumu göster
+      show-details: always
+  # Uygulama meta bilgileri
+  info:
+    env:
+      enabled: true
+
+# ==================== UYGULAMA ÖZELLEŞTİRME ====================
+app:
+
+  # JWT Token Ayarları
+  jwt:
+    # JWT imzalama anahtarı - üretimde çok güçlü olmalı
+    secret: ${JWT_SECRET:buCokGizliJwtAnahtar1234567890123456789012345678}
+    # Access token geçerlilik süresi (saniye) - 15 dakika
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900}
+    # Refresh token geçerlilik süresi (saniye) - 7 gün
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800}
+
+  # Cache TTL Ayarları (saniye cinsinden)
+  cache:
+    # Ürün listesi cache süresi - 5 dakika
+    product-list-ttl: 300
+    # Ürün detayı cache süresi - 10 dakika
+    product-detail-ttl: 600
+    # Kullanıcı session cache süresi - 30 dakika
+    user-session-ttl: 1800
+    # OTP geçerlilik süresi - 5 dakika
+    otp-ttl: 300
+    # Rate limit zaman penceresi (saniye) - 1 dakika
+    rate-limit-window: 60
+    # Rate limit maksimum istek sayısı - 1 dakikada 100 istek
+    rate-limit-max: 100
+
+  # Redis Özel Ayarlar
+  redis:
+    # Sepet cache süresi (saniye) - 24 saat
+    cart-ttl: 86400
+    # Liderlik tablosu Redis anahtarı
+    leaderboard-key: "product:leaderboard"
+    # Pub/Sub kanal adları
+    notification-channel: "notifications"
+    order-channel: "orders"
+
+# ==================== LOG ====================
+logging:
+  level:
+    # Uygulama log seviyesi
+    com.redisdemo: DEBUG
+    # Spring Cache log seviyesi (cache hit/miss görmek için)
+    org.springframework.cache: TRACE
+    # Redis işlemleri log seviyesi
+    io.lettuce: INFO
+    # Hibernate SQL log seviyesi
+    org.hibernate.SQL: DEBUG
+  # Log formatı
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
