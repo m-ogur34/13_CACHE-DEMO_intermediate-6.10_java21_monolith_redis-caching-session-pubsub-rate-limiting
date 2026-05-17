@@ -861,6 +861,34 @@ redis-cache-demo/
 
 ---
 
+## Mülakat Soruları
+
+**Q: Cache-Aside (Lazy Loading) vs Write-Through vs Write-Behind farkları nelerdir?**
+A: Cache-Aside (bu projede): Uygulama önce cache'i kontrol eder, miss → DB'den oku → cache'e yaz. Cache ve DB'yi uygulama yönetir. En yaygın pattern. Write-Through: Her yazma işleminde hem cache hem DB güncellenir (iki aşamalı). Güvenli ama yavaş. Write-Behind (Write-Back): Önce cache'e yaz, sonra async DB'ye yaz. Hızlı ama cache çöküşünde veri kaybı riski. Read-Through: Cache miss'te otomatik olarak DB'den yükler (Redis + uygulama katmanı yoktur, cache kendisi sağlar).
+
+**Q: Cache invalidation (geçersiz kılma) stratejileri nelerdir?**
+A: TTL (Time-To-Live): En basit — belirli süre sonra otomatik expire. Güncelleme anında bile eski veri döner (stale). Event-Based Invalidation: Entity güncellenince `@CacheEvict` ile cache silinir. Anlık tutarlılık. Versioned Key: `product:v3:123` — her güncelleme yeni versiyon key. Eski versiyon otomatik expire olur. Cache Tags: İlgili cache'leri etiketle, kategori değişince tüm kategori cache'ini temizle. Bu projede: `@CacheEvict(allEntries=true)` ile ilgili cache namespace'i temizleme.
+
+**Q: Redis INCR ile rate limiting nasıl çalışır?**
+A: `INCR rate-limit:{ip}:{minute}` → atomik artış + ilk çağrıda key oluşturur. `EXPIRE rate-limit:{ip}:{minute} 60` → 60 saniye TTL. Her istekte: count = INCR, count > limit → 429 Too Many Requests. Sorun: INCR ve EXPIRE iki ayrı komut — race condition (INCR sonrası crash → key expire olmaz). Çözüm: Lua script ile atomic veya `SET key 1 EX 60 NX` (ilk kez set + expire aynı anda).
+
+**Q: Redis Sorted Set (ZSET) leaderboard için neden idealdir?**
+A: ZSET: her üye bir score ile saklanır. `ZADD leaderboard 9500.0 user:1` → score ile ekle/güncelle. `ZREVRANGE leaderboard 0 9 WITHSCORES` → en yüksek 10'u al (O(log N + K)). `ZRANK leaderboard user:5` → kullanıcının sıralaması. Alternatif: Her query'de DB'yi sıralama → O(N log N) + DB yükü. ZSET: O(log N) ekleme/güncelleme, O(log N + K) top-K sorgusu — oyun skor tabloları, "en çok satanlar" için ideal.
+
+**Q: Redis Hash neden sepet (cart) için uygun?**
+A: Hash: `HSET cart:{userId} product:1 2 product:5 1` → aynı key altında field-value çiftleri. `HGETALL cart:{userId}` → tüm sepeti tek sorguda al. `HINCRBY cart:{userId} product:1 1` → atomik miktar artış. `HDEL cart:{userId} product:5` → ürünü sepetten çıkar. Alternatif: JSON string → her güncelleme için tüm JSON parse + stringify. Hash: field bazında işlem, kısmi okuma (`HGET`), memory-efficient (ziplist encoding küçük hash'lerde).
+
+**Q: Redis Pub/Sub neden Kafka gibi kalıcı değildir?**
+A: Redis Pub/Sub: fire-and-forget — subscriber offline ise mesaj kaybolur, mesajlar disk'e yazılmaz, consumer group yok. Producer çok hızlı subscriber yavaşsa buffer dolmaz (mesaj düşer). Kafka: disk'e yazar, consumer offline olsa sonradan okuyabilir, consumer group ile yük paylaşımı, replayable. Seçim: Gerçek zamanlı bildirimler (chat, live update) → Redis Pub/Sub yeterli. Kritik event'ler, audit log, event sourcing → Kafka.
+
+**Q: @Cacheable methodName vs SpEL key neden önemlidir?**
+A: `@Cacheable(value="product", key="#id")` → Redis key: `product::123`. `@Cacheable(value="product")` → tüm parametreler hash olarak key: `product::SimpleKey[123,active]`. SpEL ile özel key: `key="#userId + ':' + #category"` → `product::5:ELECTRONICS`. Neden önemli: Yanlış key stratejisi → cache pollution (farklı kullanıcıların verisi üst üste yazılır), cache miss (her zaman DB sorgusu), bellek israfı. Multi-tenant sistemlerde tenant ID mutlaka key'de olmalı.
+
+**Q: OTP (One-Time Password) için Redis neden idealdir?**
+A: OTP kısa ömürlü (5dk) ve tek kullanımlık. Redis TTL: `SET otp:{email} 123456 EX 300` → 5 dakika sonra otomatik siler. Doğrulama: `GET otp:{email}` ile karşılaştır → `DEL otp:{email}` (tek kullanım). Brute force koruması: `INCR attempt:{email}` ile deneme sayısı, 5 denemede `DEL otp:{email}`. Alternatif: DB'de OTP tablosu → scheduled job ile temizleme gerekir, TTL otomasyonu yok.
+
+---
+
 ## Lisans
 
 Bu proje eğitim amaçlıdır. MIT Lisansı altında serbestçe kullanılabilir.
